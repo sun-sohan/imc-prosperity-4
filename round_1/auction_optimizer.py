@@ -140,3 +140,79 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ── Charting ───────────────────────────────────────────────────────────────────
+
+
+# ── Charting ───────────────────────────────────────────────────────────────────
+
+def generate_charts():
+    import plotly.graph_objects as go
+    import json
+
+    MAX_QTY = 200_000
+    STEP    = 500
+
+    for name, product in PRODUCTS.items():
+        all_prices = sorted(set(list(product["bids"].keys()) + list(product["asks"].keys())))
+        best = find_optimal_order(product, max_qty=MAX_QTY, step=STEP)
+        qtys = list(range(0, MAX_QTY + STEP, STEP))
+
+        fig = go.Figure()
+
+        colors = [
+            "#2196F3", "#4CAF50", "#FF9800", "#E91E63", "#9C27B0",
+            "#00BCD4", "#FF5722", "#8BC34A", "#FFC107", "#607D8B",
+        ]
+
+        for i, bid_price in enumerate(all_prices):
+            profits = [simulate_order(product, bid_price, qty)["profit"] for qty in qtys]
+            is_optimal_price = (bid_price == best["bid_price"])
+            fig.add_trace(go.Scatter(
+                x=[q / 1000 for q in qtys],
+                y=profits,
+                mode="lines",
+                name=f"Bid @ {bid_price}",
+                line=dict(
+                    color=colors[i % len(colors)],
+                    width=3 if is_optimal_price else 1.5,
+                    dash="solid" if is_optimal_price else "dot",
+                ),
+                opacity=1.0 if is_optimal_price else 0.55,
+            ))
+
+        fig.add_trace(go.Scatter(
+            x=[best["qty"] / 1000],
+            y=[best["profit"]],
+            mode="markers",
+            name=f"Optimal: bid {best['bid_price']}, {best['qty']//1000}k units",
+            marker=dict(symbol="star", size=18, color="gold",
+                        line=dict(color="black", width=1.5)),
+        ))
+
+        slug = name.lower().replace(" ", "_")
+        fig.update_layout(
+            title={
+                "text": (
+                    f"{name} — Profit vs Qty by Bid Price<br>"
+                    f"<span style='font-size:16px;font-weight:normal;'>"
+                    f"Settlement={product['settlement']} | "
+                    f"Fees={product['buy_fee']+product['sell_fee']:.2f}/unit | "
+                    f"Optimal: bid {best['bid_price']}, qty {best['qty']//1000}k -> "
+                    f"{best['profit']:,.0f} XIRECs"
+                    f"</span>"
+                )
+            },
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+        )
+        fig.update_xaxes(title_text="Quantity (k units)")
+        fig.update_yaxes(title_text="Profit (XIRECs)")
+
+        fname = f"{slug}_profit_chart.html"
+        fig.write_html(fname, include_plotlyjs="cdn", full_html=True)
+        print(f"Saved: {fname}")
+
+
+if __name__ == "__main__":
+    main()
+    generate_charts()
