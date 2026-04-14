@@ -2,8 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-df = pd.read_csv('round_1/data_capsule/prices_round_1_day_0.csv', sep=';')
-df = df.truncate(before=5000, after=9000)
+df = pd.read_csv('round_1/data_capsule/prices_round_1_day_-1.csv', sep=';')
+# df = df.truncate(before=5000, after=9000)
 
 gb = df.groupby('product')
 
@@ -27,5 +27,6 @@ plt.figure(figsize=(10, 5))
 plt.plot(x, y1, linewidth=2, color='green')
 plt.plot(x, y2, linewidth=2, color='red')
 plt.plot(x, y4, linewidth=2, color='blue')
+plt.title('peppers')
 plt.ticklabel_format(useOffset=False)
 plt.show()

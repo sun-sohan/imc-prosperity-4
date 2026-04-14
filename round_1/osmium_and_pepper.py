@@ -26,23 +26,29 @@ class Trader:
 
                     fair_value = mid_price
 
-                    position_limit = 40
+                    position_limit = 70
+
+                    if my_position > int(position_limit / (1.2)):
+                        orders.append(Order(product, int(fair_value), -30))
+
+                    elif my_position < -int(position_limit / (1.2)):
+                        orders.append(Order(product, int(fair_value), 30))
 
                     # take any favorable trades
                     for ask, amount in list(order_depth.sell_orders.items()):
-                        if ask <= fair_value - 5:
+                        if ask <= fair_value - 2:
                             orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
                     
                     for bid, amount in list(order_depth.buy_orders.items()):
-                        if bid >= fair_value + 5:
+                        if bid >= fair_value + 2:
                             orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
 
                     # use the spread
-                    if min_ask >= fair_value + 3:
+                    if min_ask >= fair_value + 2:
                         my_amount = max(min_ask_amount, -my_position - position_limit)
                         orders.append(Order(product, min_ask - 1, my_amount))
 
-                    if max_bid <= fair_value - 3:
+                    if max_bid <= fair_value - 2:
                         my_amount = min(max_bid_amount, position_limit - my_position)
                         orders.append(Order(product, max_bid + 1, my_amount))
                 
@@ -83,19 +89,19 @@ class Trader:
                     else:
                         # take any favorable trades
                         for ask, amount in list(order_depth.sell_orders.items()):
-                            if ask <= fair_value - 1:
+                            if ask <= fair_value:
                                 orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
                         
                         for bid, amount in list(order_depth.buy_orders.items()):
-                            if bid >= fair_value + 1:
+                            if bid >= fair_value + 7:
                                 orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
 
                         # use the spread
-                        if min_ask >= fair_value + 2:
+                        if min_ask >= fair_value + 7:
                             my_amount = max(min_ask_amount, -my_position - position_limit)
                             orders.append(Order(product, min_ask - 1, my_amount))
 
-                        if max_bid <= fair_value - 2:
+                        if max_bid <= fair_value:
                             my_amount = min(max_bid_amount, position_limit - my_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
                     
@@ -110,11 +116,11 @@ class Trader:
 
                     # take favorable trades
                     for ask, amount in list(order_depth.sell_orders.items()):
-                        if ask <= fair_value - 4:
+                        if ask <= fair_value:
                             orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
 
                     # use spread
-                    if min_ask >= fair_value + 2:
+                    if min_ask >= fair_value + 7:
                             my_amount = max(min_ask_amount, -my_position - position_limit)
                             orders.append(Order(product, min_ask - 1, my_amount))
 
@@ -129,11 +135,11 @@ class Trader:
 
                     # take favorable trades
                     for bid, amount in list(order_depth.buy_orders.items()):
-                        if bid >= fair_value + 4:
+                        if bid >= fair_value + 7:
                             orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
 
                     # use spread
-                    if max_bid <= fair_value - 2:
+                    if max_bid <= fair_value:
                             my_amount = min(max_bid_amount, position_limit - my_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
 
