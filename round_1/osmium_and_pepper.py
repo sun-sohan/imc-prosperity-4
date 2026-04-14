@@ -113,8 +113,13 @@ class Trader:
                         if ask <= fair_value - 4:
                             orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
 
+                    # use spread
+                    if min_ask >= fair_value + 2:
+                            my_amount = max(min_ask_amount, -my_position - position_limit)
+                            orders.append(Order(product, min_ask - 1, my_amount))
+
                 elif order_depth.buy_orders and state.traderData != "":
-                    min_ask, min_ask_amount = list(order_depth.buy_orders.items())[0]
+                    max_bid, max_bid_amount = list(order_depth.buy_orders.items())[0]
                     
                     last_EMA = 0
                     last_EMA = float(state.traderData)
@@ -126,6 +131,11 @@ class Trader:
                     for bid, amount in list(order_depth.buy_orders.items()):
                         if bid >= fair_value + 4:
                             orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
+
+                    # use spread
+                    if max_bid <= fair_value - 2:
+                            my_amount = min(max_bid_amount, position_limit - my_position)
+                            orders.append(Order(product, max_bid + 1, my_amount))
 
                 elif state.traderData != "":
                     last_EMA = float(state.traderData)
