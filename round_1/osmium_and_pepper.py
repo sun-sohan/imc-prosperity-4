@@ -62,7 +62,8 @@ class Trader:
                 # hyperparams
                 N = 8
                 k = 2.0 / (N + 1.0)
-                position_limit = 70
+                bias = 10
+                position_limit = 80
 
                 if order_depth.sell_orders and order_depth.buy_orders:
 
@@ -76,20 +77,20 @@ class Trader:
                     else:
                         last_EMA = mid_price
 
-                    my_EMA = mid_price * k + last_EMA * (1.0 - k)
+                    my_EMA = (mid_price + bias) * k + last_EMA * (1.0 - k)
                     
                     fair_value = my_EMA
 
                     if my_position > int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), -30))
+                        orders.append(Order(product, int(fair_value), -20))
 
-                    elif my_position < -int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), 30))
+                    elif my_position < -int(position_limit / (2)):
+                        orders.append(Order(product, int(fair_value), 25))
 
                     else:
                         # take any favorable trades
                         for ask, amount in list(order_depth.sell_orders.items()):
-                            if ask <= fair_value:
+                            if ask <= fair_value + 2:
                                 orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
                         
                         for bid, amount in list(order_depth.buy_orders.items()):
@@ -101,7 +102,7 @@ class Trader:
                             my_amount = max(min_ask_amount, -my_position - position_limit)
                             orders.append(Order(product, min_ask - 1, my_amount))
 
-                        if max_bid <= fair_value:
+                        if max_bid <= fair_value + 2:
                             my_amount = min(max_bid_amount, position_limit - my_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
                     
@@ -116,7 +117,7 @@ class Trader:
 
                     # take favorable trades
                     for ask, amount in list(order_depth.sell_orders.items()):
-                        if ask <= fair_value:
+                        if ask <= fair_value + 2:
                             orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
 
                     # use spread
@@ -139,7 +140,7 @@ class Trader:
                             orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
 
                     # use spread
-                    if max_bid <= fair_value:
+                    if max_bid <= fair_value + 2:
                             my_amount = min(max_bid_amount, position_limit - my_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
 
