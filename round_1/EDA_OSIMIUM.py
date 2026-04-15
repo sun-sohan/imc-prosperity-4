@@ -20,7 +20,7 @@ x = df['timestamp']
 y1 = df['ask_price_1']
 y2 = df['bid_price_1']
 y3 = df['mid_price']
-y4 = df['mid_price'].ewm(span=150, adjust=False).mean()
+y4 = df['mid_price'].ewm(span=1000, adjust=False).mean()
 
 plt.figure(figsize=(10, 5))
 plt.plot(x, y1, linewidth=2, color='green')

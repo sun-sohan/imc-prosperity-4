@@ -21,7 +21,7 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 120
+                N = 100
                 k = 2.0 / (N + 1.0)
                 bias = 0
                 position_limit = 80
@@ -40,15 +40,18 @@ class Trader:
 
                     ash_EMA = (mid_price + bias) * k + last_EMA * (1.0 - k)
 
+                    # fair value - mid price
+                    # >0 => reversion up
+                    # <0 => reversion down
                     deviation = ash_EMA - mid_price
                     
                     fair_value = ash_EMA
 
-                    if deviation < 0 and my_position > int(position_limit / (1.5)):
-                        orders.append(Order(product, int(fair_value), -40))
+                    if deviation < 0 and my_position > int(position_limit / (1.2)):
+                        orders.append(Order(product, int(fair_value), -30))
 
-                    elif deviation > 0 and my_position < -int(position_limit / (1.5)):
-                        orders.append(Order(product, int(fair_value), 40))
+                    elif deviation > 0 and my_position < -int(position_limit / (1.2)):
+                        orders.append(Order(product, int(fair_value), 30))
 
                     else: 
                         # take any favorable trades
@@ -62,11 +65,17 @@ class Trader:
 
                         # use the spread
                         if min_ask >= fair_value + 1:
-                            my_amount = max(min_ask_amount, -my_position - position_limit)
+                            ask_amount = min_ask_amount
+                            if deviation < 0:
+                                ask_amount = min(-20, 2 * ask_amount)
+                            my_amount = max(ask_amount, -my_position - position_limit)
                             orders.append(Order(product, min_ask - 1, my_amount))
 
                         if max_bid <= fair_value - 1:
-                            my_amount = min(max_bid_amount, position_limit - my_position)
+                            bid_amount = max_bid_amount
+                            if deviation > 0:
+                                bid_amount = max(20, 2 * bid_amount)
+                            my_amount = min(bid_amount, position_limit - my_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
                 
                 result[product] = orders
