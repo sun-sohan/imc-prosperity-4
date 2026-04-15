@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-df = pd.read_csv('round_1/data_capsule/prices_round_1_day_-1.csv', sep=';')
+df = pd.read_csv('round_1/data_capsule/prices_round_1_day_0.csv', sep=';')
 # df = df.truncate(before=5000, after=9000)
 
 gb = df.groupby('product')
