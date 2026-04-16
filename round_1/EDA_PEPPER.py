@@ -14,20 +14,29 @@ df = gb.get_group(product)
 y3 = df['mid_price']
 idx = y3[y3 < 100].index
 print(idx)
-df = df.drop(index=idx)
+print(len(idx))
+df = df.drop(index=idx).reset_index()
 
 x = df['timestamp']
 y1 = df['ask_price_1']
 y2 = df['bid_price_1']
 y3 = df['mid_price']
-y4 = y3.ewm(span=800, adjust=False).mean()
-# y5 = y3.rolling(window=800).mean()
+v = y3[5000]
+
+for i in range(5001, 7000):
+    y3[i] = v
+    v -= 0.1
+for i in range(7000, 9983):
+    y3[i] = v
+    v += 0.1
+y4 = y3.ewm(span=2000, adjust=False).mean()
+y5 = y3.rolling(window=800).mean()
 spread = y1 - y2
 
 
 plt.figure(figsize=(10, 5))
-plt.plot(x, y1, linewidth=2, color='green')
-plt.plot(x, y2, linewidth=2, color='red')
+# plt.plot(x, y1, linewidth=2, color='green')
+plt.plot(x, y3, linewidth=2, color='red')
 plt.plot(x, y4, linewidth=2, color='blue')
 # plt.plot(x, y5, linewidth=2, color='yellow')
 plt.title('peppers')

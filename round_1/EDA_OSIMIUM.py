@@ -20,7 +20,7 @@ x = df['timestamp']
 y1 = df['ask_price_1']
 y2 = df['bid_price_1']
 y3 = df['mid_price']
-y4 = df['mid_price'].ewm(span=200, adjust=False).mean()
+y4 = df['mid_price'].ewm(span=1000, adjust=False).mean()
 print(y3.mean())
 spread = y1 - y2
 

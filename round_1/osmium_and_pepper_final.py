@@ -21,10 +21,11 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 600
+                N = 1000
                 k = 2.0 / (N + 1.0)
                 position_limit = 60
                 std = 5.5
+                z_threshold = 1.3
 
                 if order_depth.sell_orders and order_depth.buy_orders:
 
@@ -49,10 +50,10 @@ class Trader:
                     
                     fair_value = ash_EMA
 
-                    if z <= -1.3 and my_position > round(position_limit / abs(z)):
+                    if z <= -z_threshold and my_position > round(position_limit / abs(z)):
                         orders.append(Order(product, round(fair_value), round(15 * z)))
 
-                    elif z >= 1.3 and my_position < -round(position_limit / abs(z)):
+                    elif z >= z_threshold and my_position < -round(position_limit / abs(z)):
                         orders.append(Order(product, round(fair_value), round(15 * z)))
 
                     else: 
@@ -71,7 +72,7 @@ class Trader:
                                 orders.append(Order(product, bid, my_amount))
                                 cur_position += my_amount
 
-                        if abs(z) < 1.3:
+                        if abs(z) < z_threshold:
                             # use the spread
                             if min_ask >= fair_value + 1:
                                 ask_amount = min_ask_amount
@@ -85,13 +86,13 @@ class Trader:
                                 orders.append(Order(product, max_bid + 1, my_amount))
                                 cur_position += my_amount
                         else:
-                            if z >= 1.3:
+                            if z >= z_threshold:
                                 bid_amount = round(20 * z)
                                 my_amount = min(bid_amount, position_limit - cur_position)
                                 orders.append(Order(product, max_bid + 1, my_amount))
                                 cur_position += my_amount
                             
-                            elif z <= -1.3:
+                            elif z <= -z_threshold:
                                 ask_amount = round(20 * z)
                                 my_amount = max(ask_amount, -position_limit - cur_position)
                                 orders.append(Order(product, min_ask - 1, my_amount))
@@ -105,7 +106,7 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 800
+                N = 2000
                 k = 2.0 / (N + 1.0)
                 uptrend_position = 80
                 downtrend_position = -80
