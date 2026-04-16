@@ -21,7 +21,7 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 100
+                N = 200
                 k = 2.0 / (N + 1.0)
                 bias = 0
                 position_limit = 80
@@ -47,36 +47,44 @@ class Trader:
                     
                     fair_value = ash_EMA
 
-                    if deviation < 0 and my_position > int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), -30))
+                    if deviation < -2 and my_position > int(position_limit / (1.5)):
+                        orders.append(Order(product, int(fair_value), -20))
 
-                    elif deviation > 0 and my_position < -int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), 30))
+                    elif deviation > 2 and my_position < -int(position_limit / (1.5)):
+                        orders.append(Order(product, int(fair_value), 20))
 
                     else: 
+                        cur_position = my_position
+
                         # take any favorable trades
                         for ask, amount in list(order_depth.sell_orders.items()):
                             if ask <= fair_value - 1:
-                                orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
+                                my_amount = min(position_limit - cur_position, -amount)
+                                orders.append(Order(product, ask, my_amount))
+                                cur_position += my_amount
                         
                         for bid, amount in list(order_depth.buy_orders.items()):
                             if bid >= fair_value + 1:
-                                orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
+                                my_amount = max(-position_limit - cur_position, -amount)
+                                orders.append(Order(product, bid, my_amount))
+                                cur_position += my_amount
 
                         # use the spread
                         if min_ask >= fair_value + 1:
                             ask_amount = min_ask_amount
-                            if deviation < 0:
+                            if deviation < -2:
                                 ask_amount = min(-20, 2 * ask_amount)
-                            my_amount = max(ask_amount, -my_position - position_limit)
+                            my_amount = max(ask_amount, -position_limit - cur_position)
                             orders.append(Order(product, min_ask - 1, my_amount))
+                            cur_position += my_amount
 
                         if max_bid <= fair_value - 1:
                             bid_amount = max_bid_amount
-                            if deviation > 0:
+                            if deviation > 2:
                                 bid_amount = max(20, 2 * bid_amount)
-                            my_amount = min(bid_amount, position_limit - my_position)
+                            my_amount = min(bid_amount, position_limit - cur_position)
                             orders.append(Order(product, max_bid + 1, my_amount))
+                            cur_position += my_amount
                 
                 result[product] = orders
 
@@ -86,10 +94,10 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 8
+                N = 800
                 k = 2.0 / (N + 1.0)
-                bias = 10
-                position_limit = 80
+                uptrend_position = 80
+                downtrend_position = -80
 
                 if order_depth.sell_orders and order_depth.buy_orders:
 
@@ -103,76 +111,29 @@ class Trader:
                     else:
                         last_EMA = mid_price
 
-                    pepper_EMA = (mid_price + bias) * k + last_EMA * (1.0 - k)
-                    
-                    fair_value = pepper_EMA
+                    pepper_EMA = mid_price * k + last_EMA * (1.0 - k)
 
-                    if my_position > int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), -25))
+                    if mid_price >= pepper_EMA:
+                        cur_position = my_position
 
-                    elif my_position < -int(position_limit / (1.2)):
-                        orders.append(Order(product, int(fair_value), 25))
-
-                    else:
-                        # take any favorable trades
                         for ask, amount in list(order_depth.sell_orders.items()):
-                            if ask <= fair_value + 2:
-                                orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
+                            if ask <= mid_price + 10:
+                                my_amount = min(uptrend_position - cur_position, -amount)
+                                orders.append(Order(product, ask, my_amount))
+                                cur_position += my_amount
                         
+                        orders.append(Order(product, max_bid, uptrend_position - cur_position))
+
+                    elif mid_price < pepper_EMA:
+                        cur_position = my_position
+
                         for bid, amount in list(order_depth.buy_orders.items()):
-                            if bid >= fair_value + 7:
-                                orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
+                            if bid >= mid_price - 10:
+                                my_amount = max(downtrend_position - cur_position, -amount)
+                                orders.append(Order(product, bid, my_amount))
+                                cur_position += my_amount
 
-                        # use the spread
-                        if min_ask >= fair_value + 7:
-                            my_amount = max(min_ask_amount, -my_position - position_limit)
-                            orders.append(Order(product, min_ask - 1, my_amount))
-
-                        if max_bid <= fair_value + 2:
-                            my_amount = min(max_bid_amount, position_limit - my_position)
-                            orders.append(Order(product, max_bid + 1, my_amount))
-                    
-                elif order_depth.sell_orders and len(EMAs) > 0 and EMAs[0] != "":
-                    min_ask, min_ask_amount = list(order_depth.sell_orders.items())[0]
-                    
-                    last_EMA = 0
-                    last_EMA = float(state.traderData.split(";")[0])
-
-                    pepper_EMA = last_EMA
-                    fair_value = pepper_EMA
-
-                    # take favorable trades
-                    for ask, amount in list(order_depth.sell_orders.items()):
-                        if ask <= fair_value + 2:
-                            orders.append(Order(product, ask, min(position_limit - my_position, -amount)))
-
-                    # use spread
-                    if min_ask >= fair_value + 7:
-                            my_amount = max(min_ask_amount, -my_position - position_limit)
-                            orders.append(Order(product, min_ask - 1, my_amount))
-
-                elif order_depth.buy_orders and len(EMAs) > 0 and EMAs[0] != "":
-                    max_bid, max_bid_amount = list(order_depth.buy_orders.items())[0]
-                    
-                    last_EMA = 0
-                    last_EMA = float(state.traderData.split(";")[0])
-
-                    pepper_EMA = last_EMA
-                    fair_value = pepper_EMA
-
-                    # take favorable trades
-                    for bid, amount in list(order_depth.buy_orders.items()):
-                        if bid >= fair_value + 7:
-                            orders.append(Order(product, bid, max(-position_limit - my_position, -amount)))
-
-                    # use spread
-                    if max_bid <= fair_value + 2:
-                            my_amount = min(max_bid_amount, position_limit - my_position)
-                            orders.append(Order(product, max_bid + 1, my_amount))
-
-                elif len(EMAs) > 0 and EMAs[0] != "":
-                    last_EMA = float(state.traderData.split(";")[0])
-                    pepper_EMA = last_EMA
+                        orders.append(Order(product, min_ask, downtrend_position - cur_position))
 
                 result[product] = orders
 
