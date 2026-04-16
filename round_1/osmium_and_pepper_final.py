@@ -21,7 +21,7 @@ class Trader:
                 orders: List[Order] = []
 
                 # hyperparams
-                N = 200
+                N = 600
                 k = 2.0 / (N + 1.0)
                 position_limit = 60
                 std = 5.5
@@ -49,10 +49,10 @@ class Trader:
                     
                     fair_value = ash_EMA
 
-                    if z <= -1 and my_position > round(position_limit / abs(z)):
+                    if z <= -1.3 and my_position > round(position_limit / abs(z)):
                         orders.append(Order(product, round(fair_value), round(15 * z)))
 
-                    elif z >= 1 and my_position < -round(position_limit / abs(z)):
+                    elif z >= 1.3 and my_position < -round(position_limit / abs(z)):
                         orders.append(Order(product, round(fair_value), round(15 * z)))
 
                     else: 
@@ -71,7 +71,7 @@ class Trader:
                                 orders.append(Order(product, bid, my_amount))
                                 cur_position += my_amount
 
-                        if abs(z) < 1:
+                        if abs(z) < 1.3:
                             # use the spread
                             if min_ask >= fair_value + 1:
                                 ask_amount = min_ask_amount
@@ -85,13 +85,13 @@ class Trader:
                                 orders.append(Order(product, max_bid + 1, my_amount))
                                 cur_position += my_amount
                         else:
-                            if z >= 1:
+                            if z >= 1.3:
                                 bid_amount = round(20 * z)
                                 my_amount = min(bid_amount, position_limit - cur_position)
                                 orders.append(Order(product, max_bid + 1, my_amount))
                                 cur_position += my_amount
                             
-                            elif z <= -1:
+                            elif z <= -1.3:
                                 ask_amount = round(20 * z)
                                 my_amount = max(ask_amount, -position_limit - cur_position)
                                 orders.append(Order(product, min_ask - 1, my_amount))
