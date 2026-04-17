@@ -108,7 +108,7 @@ class Trader:
                 N = 2000
                 k = 2.0 / (N + 1.0)
                 uptrend_position = 80
-                downtrend_position = -80
+                downtrend_position = -60
 
                 if order_depth.sell_orders and order_depth.buy_orders:
 
