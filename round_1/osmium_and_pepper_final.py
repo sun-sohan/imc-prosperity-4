@@ -1,6 +1,5 @@
 from datamodel import OrderDepth, UserId, TradingState, Order
 from typing import List
-import string
 
 class Trader:
 
@@ -139,15 +138,27 @@ class Trader:
 
                     # cross below average => liquidate
                     elif mid_price < pepper_EMA:
+
+                        target_position = 0
+
+                        if mid_price < pepper_EMA - 40:
+                            target_position = downtrend_position
+                        
+                        elif mid_price < pepper_EMA - 20:
+                            target_position = downtrend_position // 2
+
+                        else:
+                            target_position = downtrend_position // 4
+
                         cur_position = my_position
 
                         for bid, amount in list(order_depth.buy_orders.items()):
                             if bid >= mid_price - 10:
-                                my_amount = max(downtrend_position - cur_position, -amount)
+                                my_amount = max(target_position - cur_position, -amount)
                                 orders.append(Order(product, bid, my_amount))
                                 cur_position += my_amount
 
-                        orders.append(Order(product, min_ask - 1, downtrend_position - cur_position))
+                        orders.append(Order(product, min_ask - 1, target_position - cur_position))
 
                 result[product] = orders
 
