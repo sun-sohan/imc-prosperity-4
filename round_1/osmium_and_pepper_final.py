@@ -23,8 +23,8 @@ class Trader:
                 N = 1000
                 k = 2.0 / (N + 1.0)
                 position_limit = 60
-                std = 5.5
-                z_threshold = 1.3
+                std = 10.0
+                z_threshold = 1.0
 
                 if order_depth.sell_orders and order_depth.buy_orders:
 
