@@ -121,7 +121,7 @@ class Trader:
                     if len(EMAs) > 0 and EMAs[0] != "":
                         last_EMA = float(EMAs[0])
                     else:
-                        last_EMA = 0
+                        last_EMA = mid_price
 
                     pepper_EMA = mid_price * k + last_EMA * (1.0 - k)
 

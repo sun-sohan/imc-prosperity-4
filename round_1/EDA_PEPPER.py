@@ -25,10 +25,10 @@ v = y3[5000]
 
 for i in range(5001, 7000):
     y3[i] = v
-    v -= 0.1
+    v -= 0.07
 for i in range(7000, 9983):
     y3[i] = v
-    v += 0.1
+    v += 0.0001
 y4 = y3.ewm(span=2000, adjust=False).mean()
 y5 = y3.rolling(window=800).mean()
 spread = y1 - y2
