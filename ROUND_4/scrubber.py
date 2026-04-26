@@ -74,6 +74,8 @@ for trader in all_traders:
         buyer_data[trader]  = (tb['x'].values, tb['price'].values, tb['quantity'].abs().values)
     if not ts.empty:
         seller_data[trader] = (ts['x'].values, ts['price'].values, ts['quantity'].abs().values)
+buyer_data_all  = dict(buyer_data)
+seller_data_all = dict(seller_data)
 
 # ─────────────────────────────────────────────
 #  Figure — white theme
@@ -171,6 +173,17 @@ def on_checkbox(label):
         buy_scatters[label].set_visible(visible)
     if label in sell_scatters:
         sell_scatters[label].set_visible(visible)
+
+    # toggle hover hit-testing too
+    if visible:
+        if label in buyer_data_all:
+            buyer_data[label] = buyer_data_all[label]
+        if label in seller_data_all:
+            seller_data[label] = seller_data_all[label]
+    else:
+        buyer_data.pop(label, None)
+        seller_data.pop(label, None)
+
     fig.canvas.draw_idle()
 
 cb.on_clicked(on_checkbox)
@@ -229,44 +242,55 @@ def _hit_test(event, ax, data_dict):
     return best
 
 
+state = {
+    'drag_start_px': None,
+    'drag_xlim':     None,
+    'dragging':      False,
+}
+
+
 def on_scroll(event):
     if event.inaxes not in (ax_buy, ax_sell):
         return
-    xlim   = ax_buy.get_xlim()
-    span   = xlim[1] - xlim[0]
-    cx     = event.xdata if event.xdata is not None else (xlim[0] + xlim[1]) / 2
-    factor = 0.72 if event.button == 'up' else 1.38
+    xlim     = ax_buy.get_xlim()
+    span     = xlim[1] - xlim[0]
+    factor   = 0.72 if event.button == 'up' else 1.38
     new_span = max(200, min(N, span * factor))
-    ratio  = (cx - xlim[0]) / span
-    lo     = cx - ratio * new_span
-    lo     = max(0, min(N - new_span, lo))
+    inv      = ax_buy.transData.inverted()
+    cx       = inv.transform((event.x, event.y))[0]
+    cx       = np.clip(cx, xlim[0], xlim[1])
+    ratio    = (cx - xlim[0]) / span
+    lo       = cx - ratio * new_span
+    lo       = max(0, min(N - new_span, lo))
     ax_buy.set_xlim(lo, lo + new_span)
     fig.canvas.draw_idle()
+
 
 
 def on_press(event):
     if event.inaxes not in (ax_buy, ax_sell) or event.button != 1:
         return
-    state['drag_start_x'] = event.xdata
-    state['drag_xlim']    = ax_buy.get_xlim()
-    state['dragging']     = False
+    state['drag_start_px'] = event.x
+    state['drag_xlim']     = ax_buy.get_xlim()
+    state['dragging']      = False
 
 
 def on_release(event):
     if event.button == 1:
-        state['drag_start_x'] = None
-        state['drag_xlim']    = None
-        state['dragging']     = False
+        state['drag_start_px'] = None
+        state['drag_xlim']     = None
+        state['dragging']      = False
 
 
 def on_motion(event):
     # ── Pan ───────────────────────────────────
-    if state['drag_start_x'] is not None and event.xdata is not None:
+    if state['drag_start_px'] is not None:
         state['dragging'] = True
-        dx       = event.xdata - state['drag_start_x']
         lo0, hi0 = state['drag_xlim']
         span     = hi0 - lo0
-        lo       = np.clip(lo0 - dx, 0, N - span)
+        win      = ax_buy.get_window_extent()
+        dx_data  = (event.x - state['drag_start_px']) * span / win.width
+        lo       = np.clip(lo0 - dx_data, 0, N - span)
         ax_buy.set_xlim(lo, lo + span)
         annot_buy.set_visible(False)
         annot_sell.set_visible(False)
@@ -281,37 +305,66 @@ def on_motion(event):
             fig.canvas.draw_idle()
         return
 
-    # Hit-test both panels using the same x position
-    hit_buy  = _hit_test(event, ax_buy,  buyer_data)
-    hit_sell = _hit_test(event, ax_sell, seller_data)
-
     changed = False
 
-    if hit_buy:
-        trader, hx, hy, qty = hit_buy
-        annot_buy.set_text(f'{trader}\nqty={qty}   px={hy:.1f}')
-        annot_buy.xy = (hx, hy)
-        annot_buy.set_visible(True)
-        changed = True
-    else:
-        if annot_buy.get_visible():
-            annot_buy.set_visible(False)
+    if event.inaxes == ax_buy:
+        hit = _hit_test(event, ax_buy, buyer_data)
+        if hit:
+            trader, hx, hy, qty = hit
+            annot_buy.set_text(f'{trader}\nqty={qty}   px={hy:.1f}')
+            annot_buy.xy = (hx, hy)
+            annot_buy.set_visible(True)
             changed = True
+            row = t[(t['buyer'] == trader) & (t['x'] == hx)]
+            if not row.empty:
+                row = row.iloc[0]
+                seller = row['seller']
+                annot_sell.set_text(f'{seller}\nqty={int(abs(row["quantity"]))}   px={row["price"]:.1f}')
+                annot_sell.xy = (hx, row['price'])
+                annot_sell.set_visible(True)
+                changed = True
+            else:
+                if annot_sell.get_visible():
+                    annot_sell.set_visible(False)
+                    changed = True
+        else:
+            if annot_buy.get_visible():
+                annot_buy.set_visible(False)
+                changed = True
+            if annot_sell.get_visible():
+                annot_sell.set_visible(False)
+                changed = True
 
-    if hit_sell:
-        trader, hx, hy, qty = hit_sell
-        annot_sell.set_text(f'{trader}\nqty={qty}   px={hy:.1f}')
-        annot_sell.xy = (hx, hy)
-        annot_sell.set_visible(True)
-        changed = True
-    else:
-        if annot_sell.get_visible():
-            annot_sell.set_visible(False)
+    elif event.inaxes == ax_sell:
+        hit = _hit_test(event, ax_sell, seller_data)
+        if hit:
+            trader, hx, hy, qty = hit
+            annot_sell.set_text(f'{trader}\nqty={qty}   px={hy:.1f}')
+            annot_sell.xy = (hx, hy)
+            annot_sell.set_visible(True)
             changed = True
+            row = t[(t['seller'] == trader) & (t['x'] == hx)]
+            if not row.empty:
+                row = row.iloc[0]
+                buyer = row['buyer']
+                annot_buy.set_text(f'{buyer}\nqty={int(abs(row["quantity"]))}   px={row["price"]:.1f}')
+                annot_buy.xy = (hx, row['price'])
+                annot_buy.set_visible(True)
+                changed = True
+            else:
+                if annot_buy.get_visible():
+                    annot_buy.set_visible(False)
+                    changed = True
+        else:
+            if annot_sell.get_visible():
+                annot_sell.set_visible(False)
+                changed = True
+            if annot_buy.get_visible():
+                annot_buy.set_visible(False)
+                changed = True
 
     if changed:
         fig.canvas.draw_idle()
-
 
 fig.canvas.mpl_connect('scroll_event',         on_scroll)
 fig.canvas.mpl_connect('button_press_event',   on_press)
