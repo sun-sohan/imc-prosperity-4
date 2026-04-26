@@ -34,13 +34,13 @@ SMILE_COEFFS = [0.0358, 0.0023, 0.1990]
 
 DAYS_LEFT_AT_START = 8
 TIMESTAMPS_PER_DAY = 1_000_000
-DAY = 2
+DAY = 3
 
 RESIDUAL_EMA_WINDOW = 1000
 DEV_EMA_WINDOW      = 1000
 Z_BIAS = 1.0
-QUOTE_SIZE = 100
-TAKE_BUFFER = 1.0   # require this much edge over fair before taking
+QUOTE_SIZE = 80
+TAKE_BUFFER = 0.8   # require this much edge over fair before taking
 
 # Fill in real values from EDA for 5300/5400/5500
 RESIDUAL_INIT = {
@@ -89,8 +89,8 @@ def moneyness(S, K, T):
 SLOPE = (0.71 - 0.42) / (-1.74 + 1)
 
 def fair_vol(m):
-    if m < -0.6:
-        return 0.42 + SLOPE * (m + 1)
+    # if m < -0.6:
+    #     return 0.42 + SLOPE * (m + 1)
     return SMILE_COEFFS[0] * m**2 + SMILE_COEFFS[1] * m + SMILE_COEFFS[2]
 
 def get_option_values(S, K, T):

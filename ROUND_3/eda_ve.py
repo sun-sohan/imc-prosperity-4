@@ -4,7 +4,7 @@ import numpy as np
 
 cutoff = 10000000000
 product = 'VELVETFRUIT_EXTRACT'
-day=2
+day=0
 
 # -----------------------
 # PRICE DATA

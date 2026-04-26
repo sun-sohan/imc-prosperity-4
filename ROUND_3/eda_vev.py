@@ -234,11 +234,8 @@ iv_df_clean = pd.read_csv('ROUND_3/iv_df_clean.csv')
 
 
 
-
-
-
 from numpy.polynomial import polynomial as P
-VOUCHERS_FIT = ['VEV_5000', 'VEV_5100', 'VEV_5200', 'VEV_5300', 'VEV_5400', 'VEV_5500']
+VOUCHERS_FIT = ['VEV_5000', 'VEV_5100', 'VEV_5200', 'VEV_5300']
 coeffs = np.polyfit(
     iv_df_clean[iv_df_clean['voucher'].isin(VOUCHERS_FIT)]['moneyness'],
     iv_df_clean[iv_df_clean['voucher'].isin(VOUCHERS_FIT)]['iv'],
@@ -246,8 +243,13 @@ coeffs = np.polyfit(
 )
 print(f'a={coeffs[0]:.4f}, b={coeffs[1]:.4f}, c={coeffs[2]:.4f}')
 
-def fair_vol(m_t):
-    return coeffs[0] * (m_t**2) + coeffs[1] * m_t + coeffs[2]
+SLOPE = (0.71 - 0.42) / (-1.74 + 1)
+
+def fair_vol(m):
+    if True:
+        print("fahh");
+        return 0.42 + SLOPE * (m + 1)
+    return coeffs[0] * m**2 + coeffs[1] * m + coeffs[2]
 
 x = np.linspace(iv_df_clean['moneyness'].min(), iv_df_clean['moneyness'].max(), 200)
 y = np.polyval(coeffs, x)
@@ -263,6 +265,24 @@ plt.ylabel('Implied Volatility')
 plt.title('Vol Smile')
 plt.grid(True)
 plt.show()
+
+
+group = iv_df_clean[iv_df_clean['voucher'] == 'VEV_4000'].sort_values('timestamp')
+
+group['pred_iv'] = fair_vol(group['moneyness'])
+
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.plot(group['iv'])
+ax.plot(group['pred_iv'])
+
+
+fig2, ax2 = plt.subplots(figsize=(12, 4))
+ax2.plot(group['underlying'])
+
+plt.show()
+
+
+
 
 
 
@@ -303,36 +323,36 @@ plt.show()
 
 
 
-# Compute fair price for every row using fitted smile
-fair_iv = np.polyval(coeffs, iv_df_clean['moneyness'].values)
-S = iv_df_clean['underlying'].values
-K = iv_df_clean['strike'].values
-T = iv_df_clean['T'].values
+# # Compute fair price for every row using fitted smile
+# fair_iv = np.polyval(coeffs, iv_df_clean['moneyness'].values)
+# S = iv_df_clean['underlying'].values
+# K = iv_df_clean['strike'].values
+# T = iv_df_clean['T'].values
 
-# Vectorized BS call pricing
-d1 = (np.log(S / K) + 0.5 * fair_iv**2 * T) / (fair_iv * np.sqrt(T))
-d2 = d1 - fair_iv * np.sqrt(T)
-fair_price = S * norm.cdf(d1) - K * norm.cdf(d2)
+# # Vectorized BS call pricing
+# d1 = (np.log(S / K) + 0.5 * fair_iv**2 * T) / (fair_iv * np.sqrt(T))
+# d2 = d1 - fair_iv * np.sqrt(T)
+# fair_price = S * norm.cdf(d1) - K * norm.cdf(d2)
 
-# Reconstruct market price from stored IV (will exactly equal original mid)
-mkt_iv = iv_df_clean['iv'].values
-d1m = (np.log(S / K) + 0.5 * mkt_iv**2 * T) / (mkt_iv * np.sqrt(T))
-d2m = d1m - mkt_iv * np.sqrt(T)
-market_price = S * norm.cdf(d1m) - K * norm.cdf(d2m)
+# # Reconstruct market price from stored IV (will exactly equal original mid)
+# mkt_iv = iv_df_clean['iv'].values
+# d1m = (np.log(S / K) + 0.5 * mkt_iv**2 * T) / (mkt_iv * np.sqrt(T))
+# d2m = d1m - mkt_iv * np.sqrt(T)
+# market_price = S * norm.cdf(d1m) - K * norm.cdf(d2m)
 
-iv_df_clean = iv_df_clean.copy()
-iv_df_clean['fair_price'] = fair_price
-iv_df_clean['market_price'] = market_price
-iv_df_clean['price_residual'] = market_price - fair_price
-iv_df_clean['vol_residual'] = mkt_iv - fair_iv
-
-
+# iv_df_clean = iv_df_clean.copy()
+# iv_df_clean['fair_price'] = fair_price
+# iv_df_clean['market_price'] = market_price
+# iv_df_clean['price_residual'] = market_price - fair_price
+# iv_df_clean['vol_residual'] = mkt_iv - fair_iv
 
 
 
-vdf = df_all[df_all['product'] == 'VELVETFRUIT_EXTRACT']
-spread = vdf['ask_price_1'] - vdf['bid_price_1']
-print(f"VELVETFRUIT_EXTRACT: mean={spread.mean():.2f}, median={spread.median():.2f}")
+
+
+# vdf = df_all[df_all['product'] == 'VELVETFRUIT_EXTRACT']
+# spread = vdf['ask_price_1'] - vdf['bid_price_1']
+# print(f"VELVETFRUIT_EXTRACT: mean={spread.mean():.2f}, median={spread.median():.2f}")
 
 
 
@@ -342,13 +362,13 @@ print(f"VELVETFRUIT_EXTRACT: mean={spread.mean():.2f}, median={spread.median():.
 # # vouchers against fair value
 
 # for v, K in zip(VOUCHERS, STRIKES):
-#     if v != 'VEV_5300' and v != 'VEV_5400' and v != 'VEV_5500':
+#     if v != 'VEV_5300' and v != 'VEV_5400' and v != 'VEV_5500' and v != 'VEV_5100' and v != 'VEV_5200' and v != 'VEV_5000':
 #         continue
 
 #     group = iv_df_clean[iv_df_clean['voucher'] == v].sort_values('timestamp')
     
 #     fair_prices = [
-#         bs_call_price_safe(row['underlying'], K, DAY_TO_TTE[row['day']], r, fair_vol(row['moneyness']))
+#         bs_call_price(row['underlying'], K, DAY_TO_TTE[row['day']], fair_vol(row['moneyness']))
 #         for _, row in group.iterrows()
 #     ]
     
