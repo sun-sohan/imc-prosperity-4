@@ -30,11 +30,16 @@ VOUCHER_MR_THR    = 5
 
 HYDRO_MR_WINDOW   = 5000
 HYDRO_MR_THR      = 10
+HYDRO_FIXED_FV    = 10050
+
+# ── Wide-spread MM params (4000, 4500) ────────
+WIDE_QUOTE_SIZE   = 40
 
 # ── Voucher lists ─────────────────────────────
-MR_VOUCHERS   = ["VEV_5000", "VEV_5100",
+MR_VOUCHERS    = ["VEV_5000", "VEV_5100",
                   "VEV_5200", "VEV_5300", "VEV_5400", "VEV_5500"]
-SKIP_VOUCHERS = ["VEV_6000", "VEV_6500"]
+WIDE_VOUCHERS  = ["VEV_4000", "VEV_4500"]
+SKIP_VOUCHERS  = ["VEV_6000", "VEV_6500"]
 
 
 # ─────────────────────────────────────────────
@@ -111,7 +116,7 @@ class ProductTrader:
 
 
 # ─────────────────────────────────────────────
-#  EMA MR Trader — shared logic for all products
+#  EMA MR Trader
 # ─────────────────────────────────────────────
 
 class EMAmrTrader:
@@ -153,6 +158,86 @@ class EMAmrTrader:
 
 
 # ─────────────────────────────────────────────
+#  Wide-spread MM Trader — symmetric passive quotes
+# ─────────────────────────────────────────────
+
+class WideMMTrader:
+    """
+    Passive symmetric market maker for wide-spread products.
+    Quotes at best_bid + 1 / best_ask - 1 (or at best if spread == 1).
+    Size is fixed and small — no signal, no skew.
+    """
+
+    def __init__(self, state, new_trader_data, products: List[str], quote_size: int):
+        self.state           = state
+        self.new_trader_data = new_trader_data
+        self.quote_size      = quote_size
+        self.traders         = {p: ProductTrader(p, state, new_trader_data) for p in products}
+
+    def get_orders(self) -> Dict[str, List[Order]]:
+        out = {}
+        for name, trader in self.traders.items():
+            if trader.best_bid is None or trader.best_ask is None:
+                continue
+
+            spread = trader.best_ask - trader.best_bid
+            if spread > 1:
+                bid_price = trader.best_bid + 1
+                ask_price = trader.best_ask - 1
+            else:
+                bid_price = trader.best_bid
+                ask_price = trader.best_ask
+
+            buy_size  = min(self.quote_size, trader.max_allowed_buy_volume)
+            sell_size = min(self.quote_size, trader.max_allowed_sell_volume)
+
+            if buy_size > 0:
+                trader.bid(bid_price, buy_size)
+            if sell_size > 0:
+                trader.ask(ask_price, sell_size)
+
+            if trader.orders:
+                out[name] = trader.orders
+
+        return out
+
+
+# ─────────────────────────────────────────────
+#  Hydrogel Trader — EMA averaged with fixed FV
+# ─────────────────────────────────────────────
+
+class HydrogelTrader:
+    """
+    Same MR logic but fair value = (ema + HYDRO_FIXED_FV) / 2,
+    anchoring the signal toward the hardcoded fundamental value.
+    """
+
+    def __init__(self, state, new_trader_data):
+        self.state           = state
+        self.new_trader_data = new_trader_data
+        self.trader          = ProductTrader("HYDROGEL_PACK", state, new_trader_data)
+
+    def get_orders(self) -> Dict[str, List[Order]]:
+        trader = self.trader
+        bid_wall, wall_mid, ask_wall = trader.get_walls()
+        if wall_mid is None:
+            return {}
+
+        ema = trader.calculate_ema("ema_mr_HYDROGEL_PACK", HYDRO_MR_WINDOW, wall_mid)
+        # fair_value = (ema + HYDRO_FIXED_FV) / 2
+        fair_value = ema
+        deviation  = wall_mid - fair_value
+
+        if deviation > HYDRO_MR_THR and trader.max_allowed_sell_volume > 0:
+            trader.ask(bid_wall + 1, trader.max_allowed_sell_volume)
+
+        elif deviation < -HYDRO_MR_THR and trader.max_allowed_buy_volume > 0:
+            trader.bid(ask_wall - 1, trader.max_allowed_buy_volume)
+
+        return {"HYDROGEL_PACK": trader.orders} if trader.orders else {}
+
+
+# ─────────────────────────────────────────────
 #  Top-level Trader
 # ─────────────────────────────────────────────
 
@@ -181,7 +266,18 @@ class Trader:
         except Exception:
             pass
 
-        # Vouchers (excl. 6000/6500) — EMA mean reversion
+        # Wide-spread vouchers (4000, 4500) — symmetric passive MM
+        try:
+            wide_mm = WideMMTrader(
+                state, new_trader_data,
+                products=WIDE_VOUCHERS,
+                quote_size=WIDE_QUOTE_SIZE,
+            )
+            result.update(wide_mm.get_orders())
+        except Exception:
+            pass
+
+        # Vouchers (excl. 4000/4500/6000/6500) — EMA mean reversion
         try:
             voucher_mr = EMAmrTrader(
                 state, new_trader_data,
@@ -193,15 +289,10 @@ class Trader:
         except Exception:
             pass
 
-        # Hydrogel — slow EMA mean reversion
+        # Hydrogel — EMA averaged with fixed FV
         try:
-            hydrogel_mr = EMAmrTrader(
-                state, new_trader_data,
-                products=["HYDROGEL_PACK"],
-                window=HYDRO_MR_WINDOW,
-                threshold=HYDRO_MR_THR,
-            )
-            result.update(hydrogel_mr.get_orders())
+            hydrogel = HydrogelTrader(state, new_trader_data)
+            result.update(hydrogel.get_orders())
         except Exception:
             pass
 
