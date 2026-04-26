@@ -258,8 +258,8 @@ class HydrogelTrader:
             return {}
 
         ema = trader.calculate_ema("ema_mr_HYDROGEL_PACK", HYDRO_MR_WINDOW, wall_mid)
-        # fair_value = (ema + HYDRO_FIXED_FV) / 2
-        fair_value = ema
+        fair_value = (ema + HYDRO_FIXED_FV) / 2
+        # fair_value = ema
         deviation  = wall_mid - fair_value
 
         # flipped for sake of site bt
