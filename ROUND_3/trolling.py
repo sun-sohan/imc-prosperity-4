@@ -22,11 +22,14 @@ PRODUCTS = {
 }
 
 # ── EMA MR params ─────────────────────────────
-VELVET_MR_WINDOW = 1000
-VELVET_MR_THR    = 5
+VELVET_MR_WINDOW  = 1000
+VELVET_MR_THR     = 5
 
 VOUCHER_MR_WINDOW = 1000
 VOUCHER_MR_THR    = 5
+
+HYDRO_MR_WINDOW   = 5000
+HYDRO_MR_THR      = 10
 
 # ── Voucher lists ─────────────────────────────
 MR_VOUCHERS   = ["VEV_5000", "VEV_5100",
@@ -108,7 +111,7 @@ class ProductTrader:
 
 
 # ─────────────────────────────────────────────
-#  EMA MR Trader — shared logic for velvet + vouchers
+#  EMA MR Trader — shared logic for all products
 # ─────────────────────────────────────────────
 
 class EMAmrTrader:
@@ -147,27 +150,6 @@ class EMAmrTrader:
                 out[name] = trader.orders
 
         return out
-
-
-# ─────────────────────────────────────────────
-#  Hydrogel Trader — blank slate
-# ─────────────────────────────────────────────
-
-class HydrogelTrader:
-    def __init__(self, state, new_trader_data):
-        self.state           = state
-        self.new_trader_data = new_trader_data
-        self.trader          = ProductTrader("HYDROGEL_PACK", state, new_trader_data)
-
-    def get_orders(self) -> Dict[str, List[Order]]:
-        trader = self.trader
-
-        if trader.best_bid is None or trader.best_ask is None:
-            return {}
-
-        trader.ask(min(self.mkt_buy_orders), trader.max_allowed_sell_volume)
-
-        return {"HYDROGEL_PACK": trader.orders}
 
 
 # ─────────────────────────────────────────────
@@ -211,10 +193,15 @@ class Trader:
         except Exception:
             pass
 
-        # Hydrogel — blank slate
+        # Hydrogel — slow EMA mean reversion
         try:
-            hydrogel = HydrogelTrader(state, new_trader_data)
-            result.update(hydrogel.get_orders())
+            hydrogel_mr = EMAmrTrader(
+                state, new_trader_data,
+                products=["HYDROGEL_PACK"],
+                window=HYDRO_MR_WINDOW,
+                threshold=HYDRO_MR_THR,
+            )
+            result.update(hydrogel_mr.get_orders())
         except Exception:
             pass
 
