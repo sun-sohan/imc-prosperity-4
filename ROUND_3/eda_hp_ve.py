@@ -42,7 +42,7 @@ def show_plot():
             # -----------------------
             trades = pd.read_csv(f'ROUND_3/trades_round_3_day_{day}.csv', sep=';')
             trades = trades[trades['symbol'] == product].copy()
-            trades = trades.sort_values('timestamp').reset_index(drop=True)
+            tradesereer = trades.sort_values('timestamp').reset_index(drop=True)
             trades = trades.iloc[:cutoff].copy()
 
             timestamp_to_x = {ts: i + x_offset for i, ts in enumerate(df['timestamp'])}
