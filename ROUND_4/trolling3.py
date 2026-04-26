@@ -36,11 +36,11 @@ SEED_MEANS = {
 }
 
 # ── Velvet params ─────────────────────────────
-VELVET_MR_WINDOW  = 3500
+VELVET_MR_WINDOW  = 3000
 VELVET_MR_THR     = 12
 
 # ── Voucher params ────────────────────────────
-VOUCHER_MR_WINDOW = 2500
+VOUCHER_MR_WINDOW = 2000
 
 VOUCHER_MR_THR = {
     "VEV_5000": 10,
@@ -57,7 +57,7 @@ HYDRO_MR_THR      = 14
 HYDRO_FIXED_FV    = 10000
 
 # ── Wide-spread MM params (4000, 4500) ────────
-WIDE_QUOTE_SIZE   = 100
+WIDE_QUOTE_SIZE   = 80
 # Inventory ratio beyond which we stop quoting the inventory-increasing side
 WIDE_FADE_THRESH  = 0.5
 WIDE_TAKE_THRESH = 0.7   # position ratio beyond which we take to flatten
