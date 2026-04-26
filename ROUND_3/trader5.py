@@ -167,7 +167,7 @@ class OptionTrader:
 
 
 # ─────────────────────────────────────────────
-#  Wall maker (VELVETFRUIT_EXTRACT only now)
+#  Wall maker
 # ─────────────────────────────────────────────
 
 class WallMakerTrader:
