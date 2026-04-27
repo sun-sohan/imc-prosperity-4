@@ -40,35 +40,35 @@ meta = df_all[df_all['product'] == 'VELVETFRUIT_EXTRACT'] \
 merged = merged.join(meta)
 
 
-# fig, axes = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
 
-# # underlying
-# axes[0].plot(merged.index, merged['underlying'], linewidth=1.2, color='black')
-# axes[0].set_ylabel('Underlying')
-# axes[0].set_title('VELVETFRUIT_EXTRACT')
-# axes[0].grid(True, alpha=0.3)
+# underlying
+axes[0].plot(merged.index, merged['underlying'], linewidth=1.2, color='black')
+axes[0].set_ylabel('Underlying')
+axes[0].set_title('VELVETFRUIT_EXTRACT')
+axes[0].grid(True, alpha=0.3)
 
-# # deep ITM (big values)
-# for v in ['VEV_4000', 'VEV_4500']:
-#     axes[1].plot(merged.index, merged[v], linewidth=1.2, label=v)
-# axes[1].set_ylabel('Deep ITM')
-# axes[1].legend(fontsize=9)
-# axes[1].grid(True, alpha=0.3)
+# deep ITM (big values)
+for v in ['VEV_4000', 'VEV_4500']:
+    axes[1].plot(merged.index, merged[v], linewidth=1.2, label=v)
+axes[1].set_ylabel('Deep ITM')
+axes[1].legend(fontsize=9)
+axes[1].grid(True, alpha=0.3)
 
-# # ATM and OTM (smaller values)
-# for v in ['VEV_5000', 'VEV_5100', 'VEV_5200', 'VEV_5300', 'VEV_5400', 'VEV_5500', 'VEV_6000', 'VEV_6500']:
-#     axes[2].plot(merged.index, merged[v], linewidth=1.2, label=v)
-# axes[2].set_ylabel('ATM/OTM')
-# axes[2].set_xlabel('Global timestamp')
-# axes[2].legend(fontsize=9, ncol=2)
-# axes[2].grid(True, alpha=0.3)
+# ATM and OTM (smaller values)
+for v in ['VEV_5000', 'VEV_5100', 'VEV_5200', 'VEV_5300', 'VEV_5400', 'VEV_5500', 'VEV_6000', 'VEV_6500']:
+    axes[2].plot(merged.index, merged[v], linewidth=1.2, label=v)
+axes[2].set_ylabel('ATM/OTM')
+axes[2].set_xlabel('Global timestamp')
+axes[2].legend(fontsize=9, ncol=2)
+axes[2].grid(True, alpha=0.3)
 
-# for ax in axes:
-#     for boundary in [999_900, 2 * 999_900]:
-#         ax.axvline(boundary, color='red', linestyle='--', linewidth=0.8, alpha=0.5)
+for ax in axes:
+    for boundary in [999_900, 2 * 999_900]:
+        ax.axvline(boundary, color='red', linestyle='--', linewidth=0.8, alpha=0.5)
 
-# plt.tight_layout()
-# plt.show()
+plt.tight_layout()
+plt.show()
 
 
 

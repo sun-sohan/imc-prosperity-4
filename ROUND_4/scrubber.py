@@ -19,9 +19,13 @@ from matplotlib.widgets import CheckButtons
 #  Config
 # ─────────────────────────────────────────────
 
+# `HYDROGEL_PACK`  `VELVETFRUIT_EXTRACT`
+# `VEV_4000`, `VEV_4500`, `VEV_5000`, `VEV_5100`, `VEV_5200`, `VEV_5300`, `VEV_5400`, `VEV_5500`, `VEV_6000`, `VEV_6500`
+
 PRODUCT  = 'VELVETFRUIT_EXTRACT'
 DAYS     = [1, 2, 3]
 DATA_DIR = 'ROUND_4'
+MIN_QTY = -1   # set to filter out trades with quantity <= this value
 
 # ─────────────────────────────────────────────
 #  Load + stitch
@@ -50,6 +54,7 @@ ts_to_x = {(row.day, row.timestamp): row.x for row in p.itertuples()}
 t['x'] = [ts_to_x.get((row.day, row.timestamp), np.nan) for row in t.itertuples()]
 t = t.dropna(subset=['x'])
 t['x'] = t['x'].astype(int)
+t = t[t['quantity'].abs() > MIN_QTY].reset_index(drop=True)
 
 day_boundaries = []
 for day in DAYS[1:]:
@@ -118,9 +123,9 @@ y_ask = p['ask_price_1'].values
 y_bid = p['bid_price_1'].values
 
 for ax in [ax_buy, ax_sell]:
-    ax.plot(x_all, y_ask, lw=1.2, color='#27ae60', alpha=0.6,  label='ask')
-    ax.plot(x_all, y_bid, lw=1.2, color='#e74c3c', alpha=0.6,  label='bid')
-    ax.plot(x_all, y_mid, lw=2.0, color='#222222', alpha=0.9,  label='mid')
+    ax.plot(x_all, y_ask, lw=0.7, color='#27ae60', alpha=0.1,  label='ask')
+    ax.plot(x_all, y_bid, lw=0.7, color='#e74c3c', alpha=0.1,  label='bid')
+    ax.plot(x_all, y_mid, lw=1.0, color='#222222', alpha=0.3,  label='mid')
     for bx in day_boundaries:
         ax.axvline(bx, color='#7f8c8d', lw=1.5, ls='--', alpha=0.7)
 

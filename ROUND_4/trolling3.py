@@ -36,11 +36,11 @@ SEED_MEANS = {
 }
 
 # ── Velvet params ─────────────────────────────
-VELVET_MR_WINDOW  = 3000
+VELVET_MR_WINDOW  = 2500
 VELVET_MR_THR     = 12
 
 # ── Voucher params ────────────────────────────
-VOUCHER_MR_WINDOW = 2000
+VOUCHER_MR_WINDOW = 2500
 
 VOUCHER_MR_THR = {
     "VEV_5000": 10,
