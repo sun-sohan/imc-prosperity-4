@@ -40,6 +40,8 @@ meta = df_all[df_all['product'] == 'VELVETFRUIT_EXTRACT'] \
 merged = merged.join(meta)
 
 
+
+
 # fig, axes = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
 
 # # underlying

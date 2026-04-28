@@ -26,38 +26,36 @@ BURN_IN_TIMESTAMP = 50_000
 BURN_IN_BLEND     = 0.5
 
 SEED_MEANS = {
-    "VELVETFRUIT_EXTRACT": 5247.65,
+    "HYDROGEL_PACK": 9984,
+    "VELVETFRUIT_EXTRACT": 5226.65,
     "VEV_4000":             1250,
     "VEV_4500":             750,
     "VEV_5000":             251.14,
     "VEV_5100":             160.86,
-    "VEV_5200":              88.99,
-    "VEV_5300":              41.18,
-    "VEV_5400":              12.63,
-    "VEV_5500":               4.71,
+    "VEV_5200":              82.99,
+    "VEV_5300":              38.7,
+    "VEV_5400":              11.63,
+    "VEV_5500":               3.71,
 }
 
 # ── Velvet params ─────────────────────────────
-VELVET_MR_WINDOW  = 2000
-VELVET_MR_THR     = 17
+VELVET_MR_WINDOW  = 1400
+VELVET_MR_THR     = 16
 
 # ── Voucher params ────────────────────────────
-VOUCHER_MR_WINDOW = 2000
+VOUCHER_MR_WINDOW = 1400
 
 VOUCHER_MR_THR = {
     "VEV_4000": 17,
     "VEV_4500": 15,
     "VEV_5000": 12,
-    "VEV_5100": 11,
-    "VEV_5200":  8,
-    "VEV_5300":  4.5,
-    "VEV_5400":  1.5,
-    "VEV_5500":  0.8,
+    "VEV_5100": 9,
+    "VEV_5200":  7,
+    "VEV_5300":  3.5,
+    "VEV_5400":  1.2,
+    "VEV_5500":  0.7,
 }
 
-# ── Flatten zone ──────────────────────────────
-# When |deviation| < threshold * FLATTEN_RATIO, close position to 0.
-# At 0.0 this never fires — behavior identical to original.
 FLATTEN_RATIO = 0.0
 
 # ── Hydrogel params ───────────────────────────
@@ -236,6 +234,7 @@ class HydrogelTrader:
         self.state           = state
         self.new_trader_data = new_trader_data
         self.trader          = ProductTrader("HYDROGEL_PACK", state, new_trader_data)
+        self.burning_in      = state.timestamp < BURN_IN_TIMESTAMP
 
     def get_orders(self) -> Dict[str, List[Order]]:
         trader = self.trader
@@ -244,7 +243,13 @@ class HydrogelTrader:
             return {}
 
         ema = trader.calculate_ema("ema_mr_HYDROGEL_PACK", HYDRO_MR_WINDOW, wall_mid)
-        deviation = wall_mid - ema
+
+        if self.burning_in:
+            fair_value = BURN_IN_BLEND * SEED_MEANS["HYDROGEL_PACK"] + (1 - BURN_IN_BLEND) * ema
+        else:
+            fair_value = ema
+
+        deviation = wall_mid - fair_value
 
         if deviation > HYDRO_MR_THR and trader.max_allowed_sell_volume > 0:
             trader.ask(bid_wall + 1, trader.max_allowed_sell_volume)
@@ -253,7 +258,6 @@ class HydrogelTrader:
             trader.bid(ask_wall - 1, trader.max_allowed_buy_volume)
 
         return {"HYDROGEL_PACK": trader.orders} if trader.orders else {}
-
 
 # ─────────────────────────────────────────────
 #  Top-level Trader

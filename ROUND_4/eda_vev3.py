@@ -39,6 +39,9 @@ for day in DAYS:
 prices = pd.concat(price_frames, ignore_index=True)
 trades = pd.concat(trade_frames, ignore_index=True)
 
+hydro = prices[prices['product'] == 'HYDROGEL_PACK']['mid_price']
+print(f"HYDROGEL_PACK global avg mid_price: {hydro.mean():.4f}")
+
 # ─────────────────────────────────────────────
 #  Analysis per product
 # ─────────────────────────────────────────────
