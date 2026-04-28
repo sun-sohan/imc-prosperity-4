@@ -27,6 +27,8 @@ BURN_IN_BLEND     = 0.5
 
 SEED_MEANS = {
     "VELVETFRUIT_EXTRACT": 5247.65,
+    "VEV_4000":             1250,
+    "VEV_4500":             750,
     "VEV_5000":             251.14,
     "VEV_5100":             160.86,
     "VEV_5200":              88.99,
@@ -36,40 +38,75 @@ SEED_MEANS = {
 }
 
 # ── Velvet params ─────────────────────────────
-VELVET_MR_WINDOW  = 3500
-VELVET_MR_THR     = 12
+VELVET_MR_WINDOW  = 4000
+VELVET_MR_THR     = 17
 
-# ── Velvet informed traders ───────────────────
-VF_FOLLOW = {"Mark 01", "Mark 14"}
-VF_FADE   = {"Mark 55"}
+# Mark-flow overlay for VELVETFRUIT_EXTRACT.
+# Positive signal predicts up: follow Mark 67/55, fade Mark 49/14.
+VELVET_MARK_SIGNAL_KEY = "velvet_mark_signal"
+VELVET_MARK_DECAY      = 0.85
+VELVET_MARK_FLOW_UNIT  = 10
+VELVET_MARK_BIAS_UNIT  = 2.0
+VELVET_MARK_MAX_SIGNAL = 3.0
+
+VELVET_MARK_WEIGHTS = {
+    "Mark 67":  1.00,
+    "Mark 49": -1.00,
+    "Mark 55":  0.35,
+    "Mark 14": -0.35,
+}
 
 # ── Voucher params ────────────────────────────
-VOUCHER_MR_WINDOW = 2500
+VOUCHER_MR_WINDOW = 4000
 
 VOUCHER_MR_THR = {
-    "VEV_5000": 10,
-    "VEV_5100":  7,
-    "VEV_5200":  5,
-    "VEV_5300":  3,
-    "VEV_5400":  2,
-    "VEV_5500":  2,
+    "VEV_4000": 17,
+    "VEV_4500": 15,
+    "VEV_5000": 12,
+    "VEV_5100": 11,
+    "VEV_5200":  8,
+    "VEV_5300":  4.5,
+    "VEV_5400":  1.5,
+    "VEV_5500":  0.8,
 }
+
+# ── Flatten zone ──────────────────────────────
+# When |deviation| < threshold * FLATTEN_RATIO, close position to 0.
+# At 0.0 this never fires — behavior identical to original.
+FLATTEN_RATIO = 0.0
 
 # ── Hydrogel params ───────────────────────────
 HYDRO_MR_WINDOW   = 5000
 HYDRO_MR_THR      = 14
-HYDRO_FIXED_FV    = 10000
-
-# ── Wide-spread MM params (4000, 4500) ────────
-WIDE_QUOTE_SIZE   = 80
-WIDE_FADE_THRESH  = 0.5
-WIDE_TAKE_THRESH  = 0.7
 
 # ── Voucher lists ─────────────────────────────
-MR_VOUCHERS   = ["VEV_5000", "VEV_5100",
+MR_VOUCHERS   = ["VEV_4000", "VEV_4500", "VEV_5000", "VEV_5100",
                   "VEV_5200", "VEV_5300", "VEV_5400", "VEV_5500"]
-SKIP_VOUCHERS = ["VEV_6000", "VEV_6500"]
-WIDE_VOUCHERS = ["VEV_4000", "VEV_4500"]
+
+
+def _read_trade_field(trade, field, default=None):
+    if isinstance(trade, dict):
+        return trade.get(field, default)
+    return getattr(trade, field, default)
+
+
+def update_velvet_mark_signal(state: TradingState, new_trader_data: Dict) -> float:
+    signal = float(new_trader_data.get(VELVET_MARK_SIGNAL_KEY, 0.0)) * VELVET_MARK_DECAY
+    market_trades = getattr(state, "market_trades", {}) or {}
+
+    for trade in market_trades.get("VELVETFRUIT_EXTRACT", []):
+        buyer  = _read_trade_field(trade, "buyer")
+        seller = _read_trade_field(trade, "seller")
+        qty    = abs(int(_read_trade_field(trade, "quantity", 0)))
+
+        if buyer in VELVET_MARK_WEIGHTS:
+            signal += VELVET_MARK_WEIGHTS[buyer] * qty / VELVET_MARK_FLOW_UNIT
+        if seller in VELVET_MARK_WEIGHTS:
+            signal -= VELVET_MARK_WEIGHTS[seller] * qty / VELVET_MARK_FLOW_UNIT
+
+    signal = max(-VELVET_MARK_MAX_SIGNAL, min(VELVET_MARK_MAX_SIGNAL, signal))
+    new_trader_data[VELVET_MARK_SIGNAL_KEY] = signal
+    return signal * VELVET_MARK_BIAS_UNIT
 
 
 # ─────────────────────────────────────────────
@@ -146,57 +183,7 @@ class ProductTrader:
 
 
 # ─────────────────────────────────────────────
-#  Velvet Trader — informed signal + EMA MR fallback
-# ─────────────────────────────────────────────
-
-class VelvetTrader:
-    """
-    Primary: if Mark 01 or Mark 14 appears as buyer (or Mark 55 as seller)
-    in market_trades this tick, immediately copy their direction at full size.
-    Fallback: EMA MR when no informed trader is visible.
-    """
-
-    def __init__(self, state, new_trader_data):
-        self.state           = state
-        self.new_trader_data = new_trader_data
-        self.trader          = ProductTrader("VELVETFRUIT_EXTRACT", state, new_trader_data)
-        self.burning_in      = state.timestamp < BURN_IN_TIMESTAMP
-
-    def get_orders(self) -> Dict[str, List[Order]]:
-        trader = self.trader
-        bid_wall, wall_mid, ask_wall = trader.get_walls()
-        if wall_mid is None:
-            return {}
-
-        # ── Informed signal ───────────────────────
-        for trade in self.state.market_trades.get("VELVETFRUIT_EXTRACT", []):
-            if trade.buyer in VF_FOLLOW or trade.seller in VF_FADE:
-                if ask_wall is not None and trader.max_allowed_buy_volume > 0:
-                    trader.bid(ask_wall - 1, trader.max_allowed_buy_volume)
-                return {"VELVETFRUIT_EXTRACT": trader.orders} if trader.orders else {}
-            if trade.seller in VF_FOLLOW or trade.buyer in VF_FADE:
-                if bid_wall is not None and trader.max_allowed_sell_volume > 0:
-                    trader.ask(bid_wall + 1, trader.max_allowed_sell_volume)
-                return {"VELVETFRUIT_EXTRACT": trader.orders} if trader.orders else {}
-
-        # ── Fallback: EMA MR ──────────────────────
-        ema = trader.calculate_ema("ema_mr_VELVETFRUIT_EXTRACT", VELVET_MR_WINDOW, wall_mid)
-        if self.burning_in:
-            fair_value = BURN_IN_BLEND * SEED_MEANS["VELVETFRUIT_EXTRACT"] + (1 - BURN_IN_BLEND) * ema
-        else:
-            fair_value = ema
-
-        deviation = wall_mid - fair_value
-        if deviation > VELVET_MR_THR and trader.max_allowed_sell_volume > 0:
-            trader.ask(bid_wall + 1, trader.max_allowed_sell_volume)
-        elif deviation < -VELVET_MR_THR and trader.max_allowed_buy_volume > 0:
-            trader.bid(ask_wall - 1, trader.max_allowed_buy_volume)
-
-        return {"VELVETFRUIT_EXTRACT": trader.orders} if trader.orders else {}
-
-
-# ─────────────────────────────────────────────
-#  EMA MR Trader (with burn-in blend + per-product threshold)
+#  EMA MR Trader (with burn-in blend + optional flatten zone)
 # ─────────────────────────────────────────────
 
 class EMAmrTrader:
@@ -205,14 +192,21 @@ class EMAmrTrader:
     threshold can be a single float (shared) or a dict {product: float}.
     During burn-in, fair value = BURN_IN_BLEND * seed + (1 - BURN_IN_BLEND) * ema.
     After burn-in, fair value = ema.
+
+    Three zones (only active when FLATTEN_RATIO > 0):
+      |dev| > threshold          → full position in signal direction
+      |dev| < threshold * ratio  → flatten to 0
+      in between                 → do nothing
     """
 
     def __init__(self, state, new_trader_data, products: List[str],
-                 window: int, threshold: Union[float, Dict[str, float]]):
+                 window: int, threshold: Union[float, Dict[str, float]],
+                 signal_bias: Optional[Dict[str, float]] = None):
         self.state           = state
         self.new_trader_data = new_trader_data
         self.window          = window
         self.threshold       = threshold
+        self.signal_bias     = signal_bias or {}
         self.traders         = {p: ProductTrader(p, state, new_trader_data) for p in products}
         self.burning_in      = state.timestamp < BURN_IN_TIMESTAMP
 
@@ -236,68 +230,40 @@ class EMAmrTrader:
             else:
                 fair_value = ema
 
-            threshold = self._get_threshold(name)
-            deviation = wall_mid - fair_value
+            threshold   = self._get_threshold(name)
+            deviation   = wall_mid - fair_value
+            trade_bias  = self.signal_bias.get(name, 0.0)
+            adjusted_deviation = deviation - trade_bias
 
-            if deviation > threshold and trader.max_allowed_sell_volume > 0:
+            td_side_key = f"side_{name}"
+            current_side = self.traders[name].last_trader_data.get(td_side_key, 0)  # +1 long, -1 short, 0 flat
+
+            if adjusted_deviation > threshold and trader.max_allowed_sell_volume > 0:
                 trader.ask(bid_wall + 1, trader.max_allowed_sell_volume)
+                self.new_trader_data[td_side_key] = -1
 
-            elif deviation < -threshold and trader.max_allowed_buy_volume > 0:
+            elif adjusted_deviation < -threshold and trader.max_allowed_buy_volume > 0:
                 trader.bid(ask_wall - 1, trader.max_allowed_buy_volume)
+                self.new_trader_data[td_side_key] = 1
 
-            if trader.orders:
-                out[name] = trader.orders
+            elif FLATTEN_RATIO > 0:
+                flatten_thr = threshold * FLATTEN_RATIO
+                pos = trader.initial_position
 
-        return out
+                if current_side == -1 and adjusted_deviation < -flatten_thr:
+                    # Was short, deviation has crossed to negative side — flatten
+                    if pos < 0:
+                        trader.bid(trader.best_ask, abs(pos))
+                    self.new_trader_data[td_side_key] = 0
 
+                elif current_side == 1 and adjusted_deviation > flatten_thr:
+                    # Was long, deviation has crossed to positive side — flatten
+                    if pos > 0:
+                        trader.ask(trader.best_bid, pos)
+                    self.new_trader_data[td_side_key] = 0
 
-# ─────────────────────────────────────────────
-#  Wide-spread MM Trader — inventory-aware passive quotes
-# ─────────────────────────────────────────────
-
-class WideMMTrader:
-    def __init__(self, state, new_trader_data, products: List[str], quote_size: int):
-        self.state           = state
-        self.new_trader_data = new_trader_data
-        self.quote_size      = quote_size
-        self.traders         = {p: ProductTrader(p, state, new_trader_data) for p in products}
-
-    def get_orders(self) -> Dict[str, List[Order]]:
-        out = {}
-        for name, trader in self.traders.items():
-            if trader.best_bid is None or trader.best_ask is None:
-                continue
-
-            spread = trader.best_ask - trader.best_bid
-            if spread > 1:
-                bid_price = trader.best_bid + 1
-                ask_price = trader.best_ask - 1
-            else:
-                bid_price = trader.best_bid
-                ask_price = trader.best_ask
-
-            pos_ratio = trader.initial_position / trader.position_limit
-
-            if pos_ratio > WIDE_TAKE_THRESH and trader.max_allowed_sell_volume > 0:
-                trader.ask(trader.best_bid, trader.max_allowed_sell_volume)
-            elif pos_ratio < -WIDE_TAKE_THRESH and trader.max_allowed_buy_volume > 0:
-                trader.bid(trader.best_ask, trader.max_allowed_buy_volume)
-
-            raw_buy_size  = int(self.quote_size * (1 - max(pos_ratio, 0)))
-            raw_sell_size = int(self.quote_size * (1 + min(pos_ratio, 0)))
-
-            if pos_ratio > WIDE_FADE_THRESH:
-                raw_buy_size = 0
-            elif pos_ratio < -WIDE_FADE_THRESH:
-                raw_sell_size = 0
-
-            buy_size  = min(raw_buy_size,  trader.max_allowed_buy_volume)
-            sell_size = min(raw_sell_size, trader.max_allowed_sell_volume)
-
-            if buy_size > 0:
-                trader.bid(bid_price, buy_size)
-            if sell_size > 0:
-                trader.ask(ask_price, sell_size)
+                else:
+                    self.new_trader_data[td_side_key] = current_side
 
             if trader.orders:
                 out[name] = trader.orders
@@ -349,25 +315,21 @@ class Trader:
 
         result = {}
 
-        # VELVETFRUIT — informed signal + EMA MR fallback
+        # VELVETFRUIT — EMA MR with burn-in blend
         try:
-            velvet = VelvetTrader(state, new_trader_data)
-            result.update(velvet.get_orders())
-        except Exception:
-            pass
-
-        # Wide-spread vouchers (4000, 4500) — inventory-aware passive MM
-        try:
-            wide_mm = WideMMTrader(
+            velvet_mark_bias = update_velvet_mark_signal(state, new_trader_data)
+            velvet_mr = EMAmrTrader(
                 state, new_trader_data,
-                products=WIDE_VOUCHERS,
-                quote_size=WIDE_QUOTE_SIZE,
+                products=["VELVETFRUIT_EXTRACT"],
+                window=VELVET_MR_WINDOW,
+                threshold=VELVET_MR_THR,
+                signal_bias={"VELVETFRUIT_EXTRACT": velvet_mark_bias},
             )
-            result.update(wide_mm.get_orders())
+            result.update(velvet_mr.get_orders())
         except Exception:
             pass
 
-        # Vouchers 5000-5500 — EMA MR with burn-in blend + per-product thresholds
+        # Vouchers — EMA MR with burn-in blend + per-product thresholds
         try:
             voucher_mr = EMAmrTrader(
                 state, new_trader_data,

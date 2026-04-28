@@ -5,6 +5,8 @@ import numpy as np
 cutoff = 10000000000000000
 days = [1, 2, 3]
 products = ['HYDROGEL_PACK', 'VELVETFRUIT_EXTRACT']
+# products = ["VEV_5000", "VEV_5100",
+#                   "VEV_5200", "VEV_5300", "VEV_5400", "VEV_5500"]
 
 def show_plot():
 
