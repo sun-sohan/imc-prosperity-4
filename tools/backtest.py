@@ -16,8 +16,8 @@ from strategy import Trader
 from datamodel import TradingState, OrderDepth, Trade, Listing, Observation
 
 def main():
-    prices_csv = project_root / "testing_shit" / "prices_14d0e571-0c75-4431-b787-800d4212a0d5.csv"
-    trades_csv = project_root / "testing_shit" / "trades_market_14d0e571-0c75-4431-b787-800d4212a0d5.csv"
+    prices_csv = project_root / "tools" / "prices_14d0e571-0c75-4431-b787-800d4212a0d5.csv"
+    trades_csv = project_root / "tools" / "trades_market_14d0e571-0c75-4431-b787-800d4212a0d5.csv"
     
     print("Loading data...")
     prices_df = pd.read_csv(prices_csv, sep=';')

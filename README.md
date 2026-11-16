@@ -44,9 +44,9 @@ Our team's code for [IMC Prosperity 4](https://prosperity.imc.com/), a trading c
 
 ## Tools
 
-- `testing_shit/extract_log.py` turns submission logs into price and trade CSVs.
+- `tools/extract_log.py` turns submission logs into price and trade CSVs.
 - `EDA_*.py` and the `eda_*.py` scripts plot order books, mid prices and EMAs for each product.
-- `testing_shit/backtest.py` is an early attempt at our own backtester. Backtest logs in `backtests/` and `round_1/backtests/` came from a community backtester.
+- `tools/backtest.py` is an early attempt at our own backtester. Backtest logs in `backtests/` and `round_1/backtests/` came from a community backtester.
 
 ## Team
 
