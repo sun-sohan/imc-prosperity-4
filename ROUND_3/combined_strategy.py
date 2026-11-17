@@ -76,7 +76,7 @@ logger = Logger()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# VELVETFRUIT_EXTRACT — friend's mean-reversion strategy (377067.py)
+# VELVETFRUIT_EXTRACT — teammate's mean-reversion strategy (377067.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
 VELVET_MR_WINDOW = 1000
