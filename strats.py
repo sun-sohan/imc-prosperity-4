@@ -23,7 +23,7 @@ class Trader:
             return {
                 "ema_pepper": None
             }
-    # what the sigma
+    # save state for the next tick
     def _save_data(self, data: Dict) -> str:
         try:
             return json.dumps(data)[:50000]

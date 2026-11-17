@@ -1,6 +1,6 @@
 # IMC Prosperity 4
 
-Our team's code for [IMC Prosperity 4](https://prosperity.imc.com/), a trading competition run by IMC Trading. Each round, teams write a Python bot that trades new simulated products on a limit order book, and the bot is scored on profit. Some rounds also include a manual trading puzzle.
+Our team's code for [IMC Prosperity 4](https://prosperity.imc.com/), a trading competition run by IMC Trading. We placed **700th of 18,803 teams (top 4%)**. Each round, teams write a Python bot that trades new simulated products on a limit order book, and the bot is scored on profit. Some rounds also include a manual trading puzzle.
 
 ## Rounds
 
@@ -35,7 +35,7 @@ Our team's code for [IMC Prosperity 4](https://prosperity.imc.com/), a trading c
 - We wrote analysis scripts (`scrubber.py`, `eda_vev3.py`). They score every trader by their average profit 50 to 1000 ticks after each trade, to separate informed traders from noise.
 - `informed.py` adds a signal from that analysis: follow the trades of the informed bots and fade the noisy ones.
 - The main bot used EMA mean reversion with a separate threshold for each voucher. At the start of each day it also blended the EMA with historical average prices, so the first trades weren't based on an empty EMA.
-- Code: `ROUND_4/` (main bot in `trolling5.py`)
+- Code: `ROUND_4/` (main bot in `mean_reversion5.py`)
 
 ### Round 5: Many new product groups
 - We plotted prices and return correlations across all ten product groups. We also ran PCA and searched for pair trades and lead-lag relationships between products (results in `research_outputs/`).

@@ -9,7 +9,7 @@ import pathlib
 import sys
 
 # Add parent directory to sys.path so we can import strategy and datamodel
-project_root = pathlib.Path(r"c:\Users\Ashvin\Desktop\Projects\prosperity\imc-prosperity-4")
+project_root = pathlib.Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 from strategy import Trader
