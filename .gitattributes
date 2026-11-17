@@ -1,0 +1,3 @@
+# Count Python as the main language: notebooks and plot exports are research output
+*.ipynb linguist-documentation
+*.html linguist-generated
